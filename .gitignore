@@ -1,0 +1,13 @@
+# env
+.env
+
+# go
+backend/mermaid-collab
+
+# frontend
+frontend/node_modules/
+backend/frontend/dist/
+
+# logs / os
+*.log
+.DS_Store

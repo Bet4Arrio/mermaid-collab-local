@@ -1,0 +1,19 @@
+# deps & build artifacts — rebuilt inside the image
+frontend/node_modules
+backend/frontend/dist
+backend/mermaid-collab
+
+# local env & secrets
+.env
+
+# vcs / editor / os
+.git
+.gitignore
+*.log
+.DS_Store
+
+# docs / compose (not needed in build context)
+CLAUDE.md
+docker-compose.yml
+Dockerfile
+.dockerignore
