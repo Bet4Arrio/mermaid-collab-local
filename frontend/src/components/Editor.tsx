@@ -37,7 +37,6 @@ export default function Editor({ ytext, awareness, undoManager, onChange }: Edit
         EditorView.theme({
           '&': { height: '100%', fontSize: '14px' },
           '.cm-scroller': { fontFamily: 'ui-monospace, monospace' },
-          ".cm-content": { caretColor: "#cdd6f4" }
         }),
       ],
     })
