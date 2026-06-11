@@ -18,6 +18,8 @@ function Lobby({ onOpen }: { onOpen: (id: string) => void }) {
   const [rooms, setRooms] = useState<RoomSummary[]>([])
   const [title, setTitle] = useState('')
   const [loading, setLoading] = useState(true)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
 
   async function load() {
     setLoading(true)
@@ -51,6 +53,28 @@ function Lobby({ onOpen }: { onOpen: (id: string) => void }) {
     load()
   }
 
+  function startRename(r: RoomSummary) {
+    setRenamingId(r.id)
+    setRenameValue(r.title)
+  }
+
+  function cancelRename() {
+    setRenamingId(null)
+    setRenameValue('')
+  }
+
+  async function saveRename(id: string) {
+    const name = renameValue.trim()
+    if (!name) return cancelRename()
+    await fetch(`/api/rooms/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: name }),
+    })
+    cancelRename()
+    load()
+  }
+
   return (
     <div className={styles.lobby}>
       <h1>Mermaid Collab</h1>
@@ -70,19 +94,43 @@ function Lobby({ onOpen }: { onOpen: (id: string) => void }) {
         <p className={styles.muted}>No diagrams yet. Create one above.</p>
       ) : (
         <ul className={styles.roomList}>
-          {rooms.map((r) => (
-            <li key={r.id}>
-              <button className={styles.roomLink} onClick={() => onOpen(r.id)}>
-                {r.title}
-              </button>
-              <span className={styles.muted}>
-                {new Date(r.updated_at).toLocaleString()}
-              </span>
-              <button className={styles.delete} onClick={() => remove(r.id)}>
-                ✕
-              </button>
-            </li>
-          ))}
+          {rooms.map((r) =>
+            renamingId === r.id ? (
+              <li key={r.id}>
+                <input
+                  className={styles.renameInput}
+                  value={renameValue}
+                  autoFocus
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveRename(r.id)
+                    if (e.key === 'Escape') cancelRename()
+                  }}
+                />
+                <button className={styles.roomLink} onClick={() => saveRename(r.id)}>
+                  ✓
+                </button>
+                <button className={styles.delete} onClick={cancelRename}>
+                  ✕
+                </button>
+              </li>
+            ) : (
+              <li key={r.id}>
+                <button className={styles.roomLink} onClick={() => onOpen(r.id)}>
+                  {r.title}
+                </button>
+                <span className={styles.muted}>
+                  {new Date(r.updated_at).toLocaleString()}
+                </span>
+                <button className={styles.rename} onClick={() => startRename(r)}>
+                  ✎
+                </button>
+                <button className={styles.delete} onClick={() => remove(r.id)}>
+                  ✕
+                </button>
+              </li>
+            ),
+          )}
         </ul>
       )}
     </div>
@@ -114,6 +162,27 @@ function RoomView({ roomId, onLeave }: { roomId: string; onLeave: () => void }) 
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>(
     'connecting',
   )
+  const [title, setTitle] = useState('')
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState('')
+
+  useEffect(() => {
+    fetch(`/api/rooms/${roomId}`)
+      .then((res) => res.json())
+      .then((room) => setTitle(room.title))
+  }, [roomId])
+
+  async function saveTitle(next: string) {
+    setEditingTitle(false)
+    const name = next.trim()
+    if (!name || name === title) return
+    const res = await fetch(`/api/rooms/${roomId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: name }),
+    })
+    if (res.ok) setTitle((await res.json()).title)
+  }
 
   useEffect(() => {
     const provider = collab.provider
@@ -148,6 +217,28 @@ function RoomView({ roomId, onLeave }: { roomId: string; onLeave: () => void }) 
         <button className={styles.back} onClick={onLeave}>
           ← Rooms
         </button>
+        {editingTitle ? (
+          <input
+            className={styles.titleInput}
+            value={titleDraft}
+            autoFocus
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveTitle(titleDraft)
+              if (e.key === 'Escape') setEditingTitle(false)
+            }}
+          />
+        ) : (
+          <button
+            className={styles.roomTitle}
+            onClick={() => {
+              setTitleDraft(title)
+              setEditingTitle(true)
+            }}
+          >
+            {title || 'Untitled'} ✎
+          </button>
+        )}
         <span className={styles.roomId}>room: {roomId}</span>
         <span className={`${styles.status} ${styles[status]}`}>{status}</span>
         <div className={styles.spacer} />

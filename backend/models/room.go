@@ -83,6 +83,23 @@ func DeleteRoom(ctx context.Context, db *sql.DB, id string) (bool, error) {
 	return n > 0, nil
 }
 
+// UpdateRoomTitle renames a room and bumps updated_at. Returns nil if no
+// room with that id exists.
+func UpdateRoomTitle(ctx context.Context, db *sql.DB, id, title string) (*RoomSummary, error) {
+	var r RoomSummary
+	err := db.QueryRowContext(ctx,
+		`UPDATE rooms SET title = $1, updated_at = NOW() WHERE id = $2
+		 RETURNING id, title, updated_at`, title, id).
+		Scan(&r.ID, &r.Title, &r.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update room title: %w", err)
+	}
+	return &r, nil
+}
+
 // SaveState persists a Yjs snapshot and bumps updated_at. Called when the last
 // client leaves a room and on graceful shutdown.
 func SaveState(ctx context.Context, db *sql.DB, id string, state []byte) error {

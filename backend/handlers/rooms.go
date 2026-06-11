@@ -29,6 +29,7 @@ func (h *RoomsHandler) Register(api fiber.Router) {
 	api.Get("/rooms", h.list)
 	api.Post("/rooms", h.create)
 	api.Get("/rooms/:id", h.get)
+	api.Patch("/rooms/:id", h.rename)
 	api.Delete("/rooms/:id", h.delete)
 }
 
@@ -91,6 +92,38 @@ func (h *RoomsHandler) get(c *fiber.Ctx) error {
 		"created_at": room.CreatedAt,
 		"updated_at": room.UpdatedAt,
 	})
+}
+
+type renameRoomReq struct {
+	Title string `json:"title"`
+}
+
+// PATCH /api/rooms/:id
+func (h *RoomsHandler) rename(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if _, err := uuid.Parse(id); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid room id")
+	}
+	var req renameRoomReq
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid body")
+	}
+	req.Title = strings.TrimSpace(req.Title)
+	if req.Title == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "title is required")
+	}
+	if len(req.Title) > maxTitleLen {
+		return fiber.NewError(fiber.StatusBadRequest, "title too long")
+	}
+
+	room, err := models.UpdateRoomTitle(c.Context(), h.DB, id, req.Title)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+	if room == nil {
+		return fiber.NewError(fiber.StatusNotFound, "room not found")
+	}
+	return c.JSON(room)
 }
 
 // DELETE /api/rooms/:id
