@@ -145,6 +145,11 @@ const SAMPLE = `graph TD
   B --> D[Realtime sync]
 `
 
+function seedContent(title: string | null): string {
+  if (!title) return SAMPLE
+  return `---\ntitle: ${title}\n---\n${SAMPLE}`
+}
+
 function RoomView({ roomId, onLeave }: { roomId: string; onLeave: () => void }) {
   // The collab provider + undo manager are created exactly once per room and
   // live in refs, never in React state (per project rules).
@@ -162,9 +167,10 @@ function RoomView({ roomId, onLeave }: { roomId: string; onLeave: () => void }) 
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>(
     'connecting',
   )
-  const [title, setTitle] = useState('')
+  const [title, setTitle] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
+  const [docEmptyOnSync, setDocEmptyOnSync] = useState(false)
 
   useEffect(() => {
     fetch(`/api/rooms/${roomId}`)
@@ -191,10 +197,12 @@ function RoomView({ roomId, onLeave }: { roomId: string; onLeave: () => void }) 
       setStatus(e.status as typeof status)
     provider.on('status', onStatus)
 
-    // Seed a starter diagram once we're synced and the doc is still empty.
+    // Flag readiness to seed a starter diagram once we're synced and the
+    // doc is still empty; the actual seed happens once the title has also
+    // loaded (see the effect below).
     const onSync = (isSynced: boolean) => {
       if (isSynced && collab.ytext.length === 0) {
-        collab.ytext.insert(0, SAMPLE)
+        setDocEmptyOnSync(true)
       }
     }
     provider.on('sync', onSync)
@@ -210,6 +218,15 @@ function RoomView({ roomId, onLeave }: { roomId: string; onLeave: () => void }) 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Seed the starter diagram (with the room title in its frontmatter) once
+  // the doc is confirmed empty and the title has loaded. Re-checks emptiness
+  // in case another client seeded it in the meantime.
+  useEffect(() => {
+    if (docEmptyOnSync && title !== null && collab.ytext.length === 0) {
+      collab.ytext.insert(0, seedContent(title))
+    }
+  }, [docEmptyOnSync, title])
 
   return (
     <div className={styles.room}>
@@ -232,7 +249,7 @@ function RoomView({ roomId, onLeave }: { roomId: string; onLeave: () => void }) 
           <button
             className={styles.roomTitle}
             onClick={() => {
-              setTitleDraft(title)
+              setTitleDraft(title ?? '')
               setEditingTitle(true)
             }}
           >
