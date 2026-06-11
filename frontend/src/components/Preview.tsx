@@ -7,7 +7,7 @@ interface PreviewProps {
 }
 
 const MIN_ZOOM = 0.25
-const MAX_ZOOM = 4
+const MAX_ZOOM = 10
 const ZOOM_STEP = 0.1
 
 const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z))
