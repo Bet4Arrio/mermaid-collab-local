@@ -59,6 +59,15 @@
   background: #eee;
 }
 
+.controls button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.controls button:disabled:hover {
+  background: transparent;
+}
+
 .error {
   color: #b00020;
   background: #fdecef;

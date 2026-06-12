@@ -82,6 +82,18 @@ export default function Preview({ source }: PreviewProps) {
     viewportRef.current?.releasePointerCapture(e.pointerId)
   }
 
+  // Export the currently rendered SVG as a downloadable .svg file.
+  function exportSvg() {
+    if (!svg) return
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'diagram.svg'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   if (error) {
     return (
       <div className={styles.preview}>
@@ -115,6 +127,9 @@ export default function Preview({ source }: PreviewProps) {
         </button>
         <button onClick={() => setZoom((z) => clampZoom(z + ZOOM_STEP))} title="Zoom in">
           +
+        </button>
+        <button onClick={exportSvg} disabled={!svg} title="Export as SVG">
+          ↓ SVG
         </button>
       </div>
     </div>
